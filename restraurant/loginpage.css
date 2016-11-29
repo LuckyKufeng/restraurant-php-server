@@ -1,0 +1,54 @@
+body{
+	background:url("backgroundimg.jpg");
+	background-size: auto;
+	background-repeat: no-repeat;
+	background-attachment: fixed;
+
+}
+
+
+form{
+	position:absolute;
+	top:200px;
+	left:25%;
+	width:50%;
+	height:700px;
+	padding-left:30px;
+	padding-right:30px;
+	border-radius:20px;
+
+
+}
+
+#title{
+	float:left;
+	margin-top:30px;
+	margin-bottom:50px;
+	width:100%;
+	margin-left:5%;
+	text-transform:uppercase;
+	margin-left:250px;
+
+}
+.has-error{
+	width:70%;
+	float:left;
+}
+
+.row{
+	width:100%;
+	margin-top:20px;
+	margin-bottom:20px;
+
+}
+
+img{
+	float:left;
+	margin-left:10%;
+	margin-right:20px;
+}
+
+#submitbutton{
+	margin-left:320px;
+	width:120px;
+}
