@@ -1,0 +1,443 @@
+{% extends 'base.html' %}
+{% block head %}
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/1.3.2/jspdf.debug.js"></script>
+{% endblock %}
+
+{% block main %}
+<script type="text/javascript">
+
+    function male(affected,relation,x_pos,y_pos){
+        var bgcolor='#D5DBDF'
+        if (affected){bgcolor='#547387';}
+        this.pattern=new joint.shapes.basic.Rect({
+                position: { x: x_pos, y: y_pos },
+                size: { width: 50, height: 50},
+                attrs: { 
+                    rect: { fill: bgcolor,
+                            stroke: 'none',
+                            filter: { name: 'dropShadow',  args: { dx: 0.5, dy: 2, blur: 2, color: '#333333' }} 
+                    }, 
+                    text: { text: relation, fill: 'black',y:50 }
+                }
+            })
+    };
+    function female(affected,relation,x_pos,y_pos){
+        var bgcolor='#D5DBDF'
+        if (affected){bgcolor='#547387';}
+        this.pattern=circle=new joint.shapes.basic.Circle({
+                position: {x:x_pos,y:y_pos},
+                size:{width:50,height:50},
+                attrs:{
+                    circle:{
+                        fill: bgcolor,
+                        stroke: 'none',
+                        filter: { name: 'dropShadow',  args: { dx: 0.5, dy: 2, blur: 2, color: '#333333' }}
+                    },
+
+                    text:{text:relation,fill:'black',y:50}
+                }
+            })
+
+    };
+    function unknown_male(x_pos,y_pos){
+        this.pattern=new joint.shapes.basic.Rect({
+                position: { x: x_pos, y: y_pos },
+                size: { width: 50, height: 50},
+                attrs: { 
+                    rect: { 
+                        fill: '#D5DBDF',
+                        stroke: 'none',
+                        filter: { name: 'dropShadow',  args: { dx: 0.5, dy: 2, blur: 2, color: '#333333' }}
+                     }, 
+                    text: { text: '?', fill: 'black' } }
+            })
+
+    };
+    function unknown_female(x_pos,y_pos){
+        this.pattern=new joint.shapes.basic.Circle({
+                position: {x: x_pos,y:y_pos},
+                size:{width:50,height:50},
+                attrs:{
+                    circle:{
+                        fill: '#D5DBDF',
+                        stroke: 'none',
+                        filter: { name: 'dropShadow',  args: { dx: 0.5, dy: 2, blur: 2, color: '#333333' }}
+                    },
+                    text:{text:'?',fill:'black'}
+                }
+            })
+    };
+    function hori_link(from,to){
+        var link = new joint.dia.Link({
+            source: { id: from.id, selector:'rect' },
+            target: { id: to.id, selector:'circle' }
+        });
+        link.attr({
+
+            '.marker-arrowheads': {
+                display: 'none'
+            },
+            '.connection-wrap': {
+                display: 'none'
+            },
+            '.marker-vertices': {
+                display: 'none'
+            },
+            '.link-tools': {
+                display: 'none'
+            }
+        });
+        graph.addCell(link);
+    }
+    function vertical_link(x_pos,y_pos){
+        var link = new joint.dia.Link({
+            source:{x:x_pos,y:y_pos},
+            target:{x:x_pos,y:y_pos+75}
+        })
+        link.attr({
+
+            '.marker-arrowheads': {
+                display: 'none'
+            },
+            '.connection-wrap': {
+                display: 'none'
+            },
+            '.marker-vertices': {
+                display: 'none'
+            },
+            '.link-tools': {
+                display: 'none'
+            }
+        });
+        graph.addCell(link);
+    }
+    function v_links(x1,y1,x2,y2){
+        var link = new joint.dia.Link({
+            source:{x:x1,y:y1},
+            target:{x:x2,y:y2},
+            vertices: [{ x: x2, y: y1 }]
+        })
+        link.set({
+            '.marker-arrowheads': {
+                display: 'none'
+            },
+            '.connection-wrap': {
+                display: 'none'
+            },
+            '.marker-vertices': {
+                display: 'none'
+            },
+            '.link-tools': {
+                display: 'none'
+            }
+        });
+        graph.addCell(link);
+    }
+    function text(x_pos,y_pos,t){
+        this.pattern=new joint.shapes.basic.Rect({
+            position: { x: x_pos, y: y_pos },
+            attrs: { 
+                text: { text: t, fill: 'black',y:75 }
+            }
+        })
+    }
+</script>
+
+
+<h3 align="left">Pedigree Tree</h3>
+<div id="myholder"></div>
+<canvas id="canvas" width='1000' height='450'></canvas>
+    <script>
+
+        var pedigree_matrix={{deps}};
+        var graph = new joint.dia.Graph;
+        var paper = new joint.dia.Paper({
+            el: $('#myholder'),
+            width: 1000,
+            height: 450,
+            model: graph,
+            gridSize: 1
+        });
+        
+        function affected(info){
+            if(info[2]==1 || info[2]==2 || info[3]==1){return true;}
+            return false;
+        }
+        var i,self_pos,spouse_pos,help;
+        var self;
+        var spouse;
+        var parents=[];
+        var m_grandparents=[];
+        var p_grandparents=[];
+        var children=[];
+        var m_uncle_ants=[];
+        var p_uncle_ants=[];
+        var sibs=[];
+        var spouse_sibs=[];
+        var spouse_parents=[];
+        var children=[];
+
+        // var spouse;
+        var spouse_mother;
+        var spouse_father;
+        for(i = 0;i < pedigree_matrix.length;i++){
+            switch(pedigree_matrix[i][0]){
+                case 1:self=pedigree_matrix[i];break;
+                case 2:sibs.push(pedigree_matrix[i]);break;
+                case 3:children.push(pedigree_matrix[i]);break;
+                case 4:parents.push(pedigree_matrix[i]);break;
+                case 5:p_grandparents.push(pedigree_matrix[i]);break;
+                case 6:p_uncle_ants.push(pedigree_matrix[i]);break;
+                case 7:m_grandparents.push(pedigree_matrix[i]);break;
+                case 8:m_uncle_ants.push(pedigree_matrix[i]);break;
+                case 10:spouse=pedigree_matrix[i];break;
+                case 11:spouse_sibs.push(pedigree_matrix[i]);break;
+                case 12:spouse_parents.push(pedigree_matrix[i]);break;
+                case 13:children.push(pedigree_matrix[i]);break;
+            }
+        }
+        // Add Counselee
+        var coun;
+        if (self[1]==0){
+            self_pos=550;
+            coun=new female(affected(self),'Counselee',self_pos,250);
+        }else{
+            self_pos=450;
+            coun=new male(affected(self),'Counselee',self_pos,250);
+        }
+        graph.addCell(coun.pattern);
+
+        //Siblings
+        for (i=0;i<sibs.length;i++){
+            if(self[1]==0){
+                help=self_pos+100*(i+1);
+            }else{
+                help=self_pos-100*(i+1);
+            }
+            if(sibs[i][1]==0){
+                sib = new female(affected(sibs[i]),'Sister',help,250);
+            }else{
+                sib = new male(affected(sibs[i]),'Brother',help,250);
+            }
+            graph.addCell(sib.pattern);
+            if(self[1]==0){
+                v_links(help-75,225,help+25,250);
+            }else{
+                v_links(help+125,225,help+25,250);
+            }
+
+        }
+        // Parents
+        var mother,father;
+        for (i=0;i<parents.length;i++){
+            if(parents[i][1]==0){
+                mother = new female(affected(parents[i]),'Mother',self_pos+100,150);
+            }else{
+                father = new male(affected(parents[i]),'Father',self_pos-100,150);
+            }
+        }
+        if(!mother){mother=new unknown_female(self_pos+100,150);}
+        if(!father){father=new unknown_male(self_pos-100,150);}
+        graph.addCells([father.pattern,mother.pattern]);
+        hori_link(father.pattern,mother.pattern);
+        vertical_link(self_pos+25,175);
+        //uncles && aunts
+        for (i=0;i<m_uncle_ants.length;i++){
+            if(m_uncle_ants[i][1]==0){
+                uncle_ant = new female(affected(m_uncle_ants[i]),'Aunt',self_pos+100*(i+2),150);
+            }else{
+                uncle_ant = new male(affected(m_uncle_ants[i]),'Uncle',self_pos+100*(i+2),150);
+            }
+            graph.addCell(uncle_ant.pattern);
+            v_links(self_pos+100*(i+1)+25,125,self_pos+100*(i+2)+25,150);
+        }
+        for (i=0;i<p_uncle_ants.length;i++){
+            if(p_uncle_ants[i][1]==0){
+                uncle_ant = new female(affected(p_uncle_ants[i]),'Aunt',self_pos-100*(i+2),150);
+            }else{
+                uncle_ant = new male(affected(p_uncle_ants[i]),'Uncle',self_pos-100*(i+2),150);
+            }
+            graph.addCell(uncle_ant.pattern);
+            v_links(self_pos-100*(i+1)+25,125,self_pos-100*(i+2)+25,150);
+        }
+
+        //help_position
+        if(self[1]==0){
+            help = self_pos-100*(1+p_uncle_ants.length);
+        }else{
+            help = self_pos+100*(1+m_uncle_ants.length);
+        }
+        //grandparents
+        var maternal_grandma,maternal_grandpa,paternal_grandma,paternal_grandpa;
+        for (i=0;i<m_grandparents.length;i++){
+            if(m_grandparents[i][1]==0){
+                maternal_grandma = new female(affected(m_grandparents[i]),'Grandmother',self_pos+150,50);
+            }else{
+                maternal_grandpa = new male(affected(m_grandparents[i]),'Grandfather',self_pos+50,50);
+            }
+            
+        }
+        if(!maternal_grandma){maternal_grandma=new unknown_female(self_pos+150,50);}
+        if(!maternal_grandpa){maternal_grandpa=new unknown_male(self_pos+50,50);}
+        for (i=0;i<p_grandparents.length;i++){
+            if(p_grandparents[i][1]==0){
+                paternal_grandma = new female(affected(p_grandparents[i]),'Grandmother',self_pos-50,50);
+            }else{
+                paternal_grandpa = new male(affected(p_grandparents[i]),'Grandfather',self_pos-150,50);
+            }
+            
+        }
+        if(!paternal_grandma){paternal_grandma=new unknown_female(self_pos-50,50);}
+        if(!paternal_grandpa){paternal_grandpa=new unknown_male(self_pos-150,50);}
+        graph.addCells([maternal_grandma.pattern,maternal_grandpa.pattern,paternal_grandpa.pattern,paternal_grandma.pattern]);
+        hori_link(maternal_grandpa.pattern,maternal_grandma.pattern);
+        hori_link(paternal_grandpa.pattern,paternal_grandma.pattern);
+        vertical_link(self_pos+125,75);
+        vertical_link(self_pos-75,75);
+        //spouse
+        var hasSpouse=false;
+        if(spouse || children.length!=0 || spouse_sibs !=0 || spouse_parents!=0){hasSpouse=true;}
+        if (hasSpouse){
+            if(self[1]==0){
+                spouse_pos=help-125;
+            }else{
+                spouse_pos=help+175;
+            }
+            if (self[1]==0){
+                if (!spouse){
+                    s = new unknown_male(spouse_pos,250);
+                }else{
+                    s=new male(affected(spouse),'Husband',spouse_pos,250)
+                }
+                graph.addCell(s.pattern);
+                hori_link(s.pattern,coun.pattern);
+            }else{
+                if (!spouse){
+                    s = new unknown_female(spouse_pos,250);
+                }else{
+                    s=new female(affected(spouse),'wife',spouse_pos,250)
+                }
+                graph.addCell(s.pattern);
+                hori_link(coun.pattern,s.pattern);
+            }
+
+            var spouse_mother,spouse_father;
+            for (i=0;i<spouse_parents.length;i++){
+                if(spouse_parents[i][1]==0){
+                    spouse_mother = new female(affected(spouse_parents[i]),'Mother in Law',spouse_pos+50,150);
+                }else{
+                    spouse_father = new male(affected(spouse_parents[i]),'Father in Law',spouse_pos-50,150);
+                }
+                
+            }
+            if(!spouse_mother){spouse_mother=new unknown_female(spouse_pos+50,150);}
+            if(!spouse_father){spouse_father=new unknown_male(spouse_pos-50,150);}
+            graph.addCells([spouse_father.pattern,spouse_mother.pattern]);
+            hori_link(spouse_father.pattern,spouse_mother.pattern);
+            vertical_link(spouse_pos+25,175);
+            // Spouse sib
+            for (i=0;i<spouse_sibs.length;i++){
+                if(self[1]==0){
+                    help=spouse_pos-100*(i+1);
+                }else{
+                    help=spouse_pos+100*(i+1);
+                }
+                if(spouse_sibs[i][1]==0){
+                    spouse_sib = new female(affected(spouse_sibs[i]),'Sister in Law',help,250);
+                }else{
+                    spouse_sib = new male(affected(spouse_sibs[i]),'Brother in Law',help,250);
+                }
+                graph.addCell(spouse_sib.pattern);
+                if(self[1]==0){v_links(help+125,225,help+25,250)}
+                else{v_links(help-75,225,help+25,225);}
+            }
+            // Children
+            var children_start = (self_pos+spouse_pos)/2-50*(children.length-1)
+            for(i=0;i<children.length;i++){
+                if(children[i][1]==0){
+                    child=new female(affected(children[i]),'Daughter',children_start+100*i,350);
+                }else{
+                    child=new male(affected(children[i]),'Son',children_start+100*i,350);
+                }
+                graph.addCell(child.pattern);
+                var link = new joint.dia.Link({
+                    source:{x:(self_pos+spouse_pos)/2+25,y:275},
+                    target:{x:children_start+100*i+25,y:350},
+                    vertices: [{ x: (self_pos+spouse_pos)/2+25, y: 325 },{x:children_start+100*i+25,y:325}]
+                })
+                link.attr({
+		            '.marker-arrowheads': {
+		                display: 'none'
+		            },
+		            '.connection-wrap': {
+		                display: 'none'
+		            },
+		            '.marker-vertices': {
+		                display: 'none'
+		            },
+		            '.link-tools': {
+		                display: 'none'
+		            }
+		        });
+                graph.addCell(link);
+            }
+
+        }
+		var svg = paper.svg;
+		var serializer = new XMLSerializer();
+        var svgString = serializer.serializeToString(svg);
+        var canvas = document.getElementById('canvas');
+     	var context = canvas.getContext('2d');
+     	context.fillStyle = "#ffffff";
+     	context.fillRect(0,0,canvas.width,canvas.height);
+     	context.drawSvg(svgString,0,0,canvas.width,canvas.height);
+     	canvas.style.display="none";
+     	//generate pdf
+        function pdf(){
+	        var imgData = canvas.toDataURL('image/jpeg',1.0);
+	        var doc = new jsPDF('landscape');
+		    doc.setFontSize(10);
+		    doc.text(35, 25, "Pedigree Tree");
+        	doc.addImage(canvas, 'jpg',0, 50);
+        	doc.save('Pedigree.pdf');
+		}
+  </script>
+
+  <h3>Legend</h3>
+  <div id="legend" style="border:1px solid black;"></div>
+  <script type="text/javascript">
+
+    var graph = new joint.dia.Graph;
+
+    var legend_paper = new joint.dia.Paper({
+        el: $('#legend'),
+        width: 1000,
+        height: 80,
+        model: graph,
+        gridSize: 1
+    });
+
+    var affected_male=new male(true,'Affected Male', 30, 10);
+    var unaffected_male=new male(false,'Unaffected Male',180,10);
+    var un_male = new unknown_male(330,10);
+    var affected_female=new female(true,'Affected Female', 480, 10);
+    var unaffected_female=new female(false,'Unaffected Female',630,10);
+    var un_female = new unknown_female(795,10);
+    var text1=new text(340,10,'Male without Information');
+    var text2=new text(810,10,'Female without Information');
+    graph.addCells([affected_male.pattern,unaffected_male.pattern,un_male.pattern,affected_female.pattern,unaffected_female.pattern,un_female.pattern,text1.pattern,text2.pattern]);
+
+  </script>
+  
+  </br>
+  {% if add %}
+  <form action="/survey">
+    <button class="btn btn-sm btn-primary btn-block" style="width:250px" type="submit" >Add More Pedigrees</button>
+  </form>
+  {%endif%}
+  </br>
+  <button id="download" class="btn btn-sm btn-primary btn-block" onclick="pdf()"style="width:250px" type="submit" >Save Pedigree Tree</button>
+  </br>
+  </br>
+{% endblock %}
